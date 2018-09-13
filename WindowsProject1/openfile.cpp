@@ -115,12 +115,33 @@ public:
 		return false;
 	}
 
-public:
+	linePointType yVertDist(linePointType x, linePointType y)
+	{
+		linePointType yonline = (x - startx)*std::tan(alpha) + starty;
+		return std::abs(yonline - y);
+	}
+
+	linePointType xHorDist(linePointType x, linePointType y)
+	{
+		linePointType xonline = (endy - y)*std::tan(M_PI / 2. - alpha) + startx;
+		return std::abs(xonline - x);
+	}
+
+	linePointType dist(linePointType x, linePointType y)
+	{
+		wxPoint a(endx - startx, endy - starty);
+		wxPoint b(x - startx, y - starty);
+		double area = std::abs(a.x*b.y - a.y*b.x);
+		return area/std::sqrt(a.x*a.x + a.y*a.y);
+	}
+
+private:
 	linePointType startx;
 	linePointType starty;
 	linePointType endx;
 	linePointType endy;
 	double alpha;
+
 };
 
 void Openfile::InitHexa()
@@ -150,26 +171,39 @@ void Openfile::InitHexa()
 	Line topLeft(0, y2, x0, y3);
 	Line topRight(x0, y3, nx - 1, y2);
 
+	//init colors
 	for (int i = 0; i < nx; i++)
 	{
 		for (int j = 0; j < ny; j++)
 		{
 			if (midRight.isUnder(i, j))
 			{
-				imageData[2 + 3 * i + (ny-1-j) * nx * 3] = 255;
+				imageData[1 + 3 * i + (ny-1-j) * nx * 3] = 255;
+				double ydist = midRight.yVertDist(i, j);
+				imageData[0 + 3 * i + (ny - 1 - j) * nx * 3] = 255*(1-ydist/(ysize/2.));
+				double xdist = right.xHorDist(i, j);
+				imageData[2 + 3 * i + (ny - 1 - j) * nx * 3] = 255 * (xdist / (xsize/2.));
 			}
 			else if (midLeft.isUnder(i, j))
 			{
-				imageData[1 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
+				imageData[2 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
+				double ydist = midLeft.yVertDist(i, j);
+				imageData[0 + 3 * i + (ny - 1 - j) * nx * 3] = 255 * (1 - ydist / (ysize/2.));
+				double xdist = left.xHorDist(i, j);
+				imageData[1 + 3 * i + (ny - 1 - j) * nx * 3] = 255 * (xdist / (xsize/2.));
 			}
 			else
 			{
 				imageData[0 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
+				double green = topLeft.dist(i, j);
+				imageData[1 + 3 * i + (ny - 1 - j) * nx * 3] = 255 *(green / (xsize / 2.));
+				double blue = topRight.dist(i, j);
+				imageData[2 + 3 * i + (ny - 1 - j) * nx * 3] = 255 *(blue / (xsize / 2.));
 			}
 		}
 	}
 
-
+	//white outside of hexa
 	for (int i = 0; i < nx; i++)
 	{
 		for (int j = 0; j < ny; j++)
