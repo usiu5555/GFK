@@ -76,37 +76,110 @@ void Openfile::Repaint()
 class Line
 {
 public:
-	Line(int posx1, int posy1, int posx2, int posy2)
+	using linePointType = double;
+	Line(linePointType posx1, linePointType posy1, linePointType posx2, linePointType posy2)
 		: startx{posx1}, starty{posy1}, endx{ posx2 }, endy{ posy2 }
 	{
-		alpha = std::atan(static_cast<double>(endy - endx) / static_cast<double>(endy - starty));
+		alpha = std::atan(static_cast<double>(endy - starty) / static_cast<double>(endx - startx));
 	}
 
-	bool isUnder(int x, int y) 
+	bool isUnder(linePointType x, linePointType y) 
 	{
 		if (x < startx || x > endx) return false;
-		int yonline = (x - startx)*std::tan(alpha);
+		linePointType yonline = (x - startx)*std::tan(alpha) + starty;
 		if (y < yonline) return true;
 		return false;
 	}
 
-	bool isOnRight(int x, int y)
+	bool isOver(linePointType x, linePointType y)
+	{
+		if (x < startx || x > endx) return false;
+		linePointType yonline = (x - startx)*std::tan(alpha) + starty;
+		if (y > yonline) return true;
+		return false;
+	}
+
+	bool isOnRight(linePointType x, linePointType y)
 	{
 		if (y < starty || y > endy) return false;
-		int xonline = (endy - y)*std::tan(M_PI/2. -alpha);
+		linePointType xonline = (endy - y)*std::tan(M_PI/2. -alpha) + startx;
 		if (xonline > x) return true;
 		return false;
 	}
 
+	bool isOnLeft(linePointType x, linePointType y)
+	{
+		if (y < starty || y > endy) return false;
+		linePointType xonline = (endy - y)*std::tan(M_PI / 2. - alpha) + startx;
+		if (xonline < x) return true;
+		return false;
+	}
+
 public:
-	int startx;
-	int starty;
-	int endx;
-	int endy;
+	linePointType startx;
+	linePointType starty;
+	linePointType endx;
+	linePointType endy;
 	double alpha;
 };
 
 void Openfile::InitHexa()
 {
+	double a = 125;
+	int ysize = 2*a;
+	int xsize = a*std::sqrt(3);
+	hexa1 = new wxImage(wxSize(xsize, ysize));
+	unsigned char * imageData = hexa1->GetData();
 
+	int ny = hexa1->GetHeight();
+	int nx = hexa1->GetWidth();
+	int x0 = nx / 2;
+	int y0 = ny / 2;
+
+	int y1 = (nx / 2)*std::tan(M_PI / 6.);
+	int y2 = y1 + a;
+	int y3 = ny - 1;
+	
+	Line botRight(x0, 0, nx - 1, y1);
+	Line botLeft(0, y1, x0, 0);
+	Line left(0, y1, 0, y2);
+	Line right(nx - 1, y1, nx - 1, y2);
+	Line mid(x0, 0, x0, y0);
+	Line midLeft(0, y2, x0, y0);
+	Line midRight(x0, y0, nx - 1, y2);
+	Line topLeft(0, y2, x0, y3);
+	Line topRight(x0, y3, nx - 1, y2);
+
+	for (int i = 0; i < nx; i++)
+	{
+		for (int j = 0; j < ny; j++)
+		{
+			if (midRight.isUnder(i, j))
+			{
+				imageData[2 + 3 * i + (ny-1-j) * nx * 3] = 255;
+			}
+			else if (midLeft.isUnder(i, j))
+			{
+				imageData[1 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
+			}
+			else
+			{
+				imageData[0 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
+			}
+		}
+	}
+
+
+	for (int i = 0; i < nx; i++)
+	{
+		for (int j = 0; j < ny; j++)
+		{
+			if (botRight.isUnder(i, j) || botLeft.isUnder(i, j) || topRight.isOver(i, j) || topLeft.isOver(i, j))
+			{
+				imageData[0 + 3 * i + (ny-1-j) * nx * 3] = 255;
+				imageData[1 + 3 * i + (ny-1-j) * nx * 3] = 255;
+				imageData[2 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
+			}
+		}
+	}
 }
