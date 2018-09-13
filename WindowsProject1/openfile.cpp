@@ -1,6 +1,7 @@
 #include "openfile.h"
 #include <cmath>
 #include <vector>
+#include <list>
 
 Openfile::Openfile(const wxString & title)
 	: wxFrame(NULL, wxID_ANY, title, wxDefaultPosition, wxSize(1024, 720))
@@ -23,16 +24,20 @@ Openfile::Openfile(const wxString & title)
 
 	m_scrolledWindow = new wxScrolledWindow(this, wxID_ANY, wxDefaultPosition, wxSize(300,300), wxHSCROLL | wxVSCROLL);
 	m_scrolledWindow->SetScrollRate(5, 5);
-	m_scrolledWindow->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(Openfile::m_scrolledWindow_update), NULL, this);
-	m_scrolledWindow->Connect(wxEVT_SCROLLWIN_THUMBTRACK, wxScrollWinEventHandler(Openfile::OnScroll), NULL, this);
-	bSizer1->Add(m_scrolledWindow, 1, wxEXPAND | wxALL, 5);
+		bSizer1->Add(m_scrolledWindow, 1, wxEXPAND | wxALL, 5);
 
-	hexaWindow = new wxWindow(this, wxID_ANY, wxDefaultPosition, wxSize(300,300));
+	hexaWindow = new wxWindow(this, wxID_ANY, wxDefaultPosition, wxSize(300,700));
 
 	wxBoxSizer* bSizer2;
 	bSizer2 = new wxBoxSizer(wxVERTICAL);
 	bSizer2->SetMinSize(wxSize(300,300));
+
+	debugTextField = new wxStaticText(this, wxID_ANY, _("MyLabel"), wxDefaultPosition, wxDefaultSize, 0);
+	debugTextField->Wrap(-1);
+	bSizer2->Add(debugTextField, 0, wxALL, 5);
 	bSizer2->Add(hexaWindow, 0, wxALL , 5);
+
+
 	bSizer1->Add(bSizer2, 0, wxALL, 5);
 
 	this->SetSizer(bSizer1);
@@ -41,6 +46,10 @@ Openfile::Openfile(const wxString & title)
 	Center();
 	InitHexa();
 
+	m_scrolledWindow->Connect(wxEVT_UPDATE_UI, wxUpdateUIEventHandler(Openfile::m_scrolledWindow_update), NULL, this);
+	m_scrolledWindow->Connect(wxEVT_SCROLLWIN_THUMBTRACK, wxScrollWinEventHandler(Openfile::OnScroll), NULL, this);
+	m_scrolledWindow->Connect(wxEVT_LEFT_DOWN, wxMouseEventHandler(Openfile::OnMouseDown), NULL, this);
+	hexaWindow->Connect(wxEVT_LEFT_DOWN, wxMouseEventHandler(Openfile::OnMouseDownHexa), NULL, this);
 }
 
 
@@ -60,17 +69,25 @@ void Openfile::OnOpen(wxCommandEvent& event)
 	}
 }
 
+const int hexaOffsetx = 0;
+const int hexaOffsety = 0;
+
 void Openfile::Repaint()
 {
 	wxBitmap bitmap(imageCpy);          // Tworzymy tymczasowa bitmape na podstawie Img_Cpy
-	wxBitmap hexabit(*hexa1);          
+	wxBitmap hexabit(hexa1);
+	wxBitmap hexabit2(hexaCpy);
 	wxClientDC dc(m_scrolledWindow);   // Pobieramy kontekst okna
 	wxClientDC dc2(hexaWindow);
 	m_scrolledWindow->DoPrepareDC(dc); // Musimy wywolac w przypadku wxScrolledWindow, zeby suwaki prawidlowo dzialaly
 	dc.Clear();
 	dc2.Clear();
 	dc.DrawBitmap(bitmap, 0, 0, false); // Rysujemy bitmape na kontekscie urzadzenia
-	dc2.DrawBitmap(hexabit, 0, 0, false);
+	dc2.DrawBitmap(hexabit, hexaOffsetx, hexaOffsety, false);
+	dc2.DrawBitmap(hexabit2, 0, 305, false);
+	//dc2.SetBrush(*wxBLACK_BRUSH); // green filling
+	dc2.SetPen(wxPen(wxColor(0, 0, 0), 3)); // 5-pixels-thick red outline
+	if (circPoint) dc2.DrawCircle(*circPoint, 5 /* radius */);
 }
 
 class Line
@@ -149,11 +166,11 @@ void Openfile::InitHexa()
 	double a = 125;
 	int ysize = 2*a;
 	int xsize = a*std::sqrt(3);
-	hexa1 = new wxImage(wxSize(xsize, ysize));
-	unsigned char * imageData = hexa1->GetData();
+	hexa1 = wxImage(wxSize(xsize, ysize));
+	unsigned char * imageData = hexa1.GetData();
 
-	int ny = hexa1->GetHeight();
-	int nx = hexa1->GetWidth();
+	int ny = hexa1.GetHeight();
+	int nx = hexa1.GetWidth();
 	int x0 = nx / 2;
 	int y0 = ny / 2;
 
@@ -216,4 +233,113 @@ void Openfile::InitHexa()
 			}
 		}
 	}
+
+	hexaCpy = hexa1.Copy();
 }
+
+void Openfile::MarkHexaColor(const wxColor& color)
+{
+	int R = color.Red();
+	int G = color.Green();
+	int B = color.Blue();
+	int maxColor = std::max(std::max(R, G), B);
+	int diff = 255 - maxColor;
+	R += diff;
+	G += diff;
+	B += diff;
+	wxPoint colorPosOnHex;
+
+
+	//colorPosOnHex.x = hexa1.GetWidth() / 2;
+	//colorPosOnHex.y = hexa1.GetHeight() / 2;
+	if (R > 243 && G > 243 && B > 243)
+	{
+		colorPosOnHex.x = hexa1.GetWidth() / 2;
+		colorPosOnHex.y = hexa1.GetHeight() / 2;
+	}
+	else
+	{
+		//unsigned char * imageData = hexa1.GetData();
+		int nx = hexa1.GetWidth();
+		int ny = hexa1.GetHeight();
+		int tol = 2;
+		for (int i = 0; i < nx; i++)
+		{
+			for (int j = 0; j < ny; j++)
+			{
+				int diffR = std::abs(hexa1.GetRed(i, j) - R);
+				int diffG = std::abs(hexa1.GetGreen(i, j) - G);
+				int diffB = std::abs(hexa1.GetBlue(i, j) - B);
+				if (diffR < tol && diffG < tol && diffB< tol)
+				{
+					colorPosOnHex.x = i;
+					colorPosOnHex.y = j;
+				}
+			}
+		}
+	}
+	debugTextField->SetLabelText(std::to_string(colorPosOnHex.x) + " " + std::to_string(colorPosOnHex.y));
+	debugTextField->SetLabelText("R: " + std::to_string(R) + " G: " + std::to_string(G) + " B: " + std::to_string(B));
+	if (circPoint) delete circPoint;
+	circPoint = new wxPoint(colorPosOnHex.x, colorPosOnHex.y);
+}
+
+bool Openfile::isOnHexa(const wxPoint& p)
+{
+	double a = 125;
+	int ny = hexa1.GetHeight();
+	int nx = hexa1.GetWidth();
+	int x0 = nx / 2;
+	int y0 = ny / 2;
+
+	int y1 = (nx / 2)*std::tan(M_PI / 6.);
+	int y2 = y1 + a;
+	int y3 = ny - 1;
+	
+
+	Line botRight(x0, 0, nx - 1, y1);
+	Line botLeft(0, y1, x0, 0);
+	Line left(0, y1, 0, y2);
+	Line right(nx - 1, y1, nx - 1, y2);
+	Line mid(x0, 0, x0, y0);
+	Line midLeft(0, y2, x0, y0);
+	Line midRight(x0, y0, nx - 1, y2);
+	Line topLeft(0, y2, x0, y3);
+	Line topRight(x0, y3, nx - 1, y2);
+
+	int i = p.x;
+	int j = p.y;
+	if (botRight.isUnder(i, j) || botLeft.isUnder(i, j) || topRight.isOver(i, j) || topLeft.isOver(i, j))
+	{
+		return false;
+	}
+	return true;
+
+}
+
+void Openfile::OnMouseDown(wxMouseEvent &event)
+{
+	wxPoint pt = wxGetMousePosition();
+	wxClientDC dc(m_scrolledWindow);
+	pt = event.GetLogicalPosition(dc);
+	pt = m_scrolledWindow->CalcUnscrolledPosition(pt);
+	mouseX = pt.x;
+	mouseY = pt.y;
+	
+	wxColor pointColor(wxColor(imageCpy.GetRed(mouseX, mouseY), imageCpy.GetGreen(mouseX, mouseY), imageCpy.GetBlue(mouseX, mouseY)));
+	//debugTextField->SetLabelText("R: "+std::to_string(pointColor.Red()) + " G: " +std::to_string(pointColor.Green()) +" B: "+ std::to_string(pointColor.Blue()));
+	MarkHexaColor(pointColor);
+}
+
+void Openfile::OnMouseDownHexa(wxMouseEvent &event)
+{
+	wxPoint pt = wxGetMousePosition();
+	wxClientDC dc(m_scrolledWindow);
+	pt = event.GetLogicalPosition(dc);
+	if (isOnHexa(pt))
+	{
+		if (circOnHexPoint) delete circOnHexPoint;
+		circOnHexPoint = new wxPoint(pt);
+	}
+}
+
