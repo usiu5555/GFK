@@ -35,6 +35,10 @@ Openfile::Openfile(const wxString & title)
 	debugTextField = new wxStaticText(this, wxID_ANY, _("MyLabel"), wxDefaultPosition, wxDefaultSize, 0);
 	debugTextField->Wrap(-1);
 	bSizer2->Add(debugTextField, 0, wxALL, 5);
+
+	execute = new wxButton(this, wxID_ANY, _("Execute"), wxDefaultPosition, wxDefaultSize, 0);
+	bSizer2->Add(execute, 0, wxALL | wxEXPAND, 5);
+
 	bSizer2->Add(hexaWindow, 0, wxALL , 5);
 
 
@@ -50,6 +54,7 @@ Openfile::Openfile(const wxString & title)
 	m_scrolledWindow->Connect(wxEVT_SCROLLWIN_THUMBTRACK, wxScrollWinEventHandler(Openfile::OnScroll), NULL, this);
 	m_scrolledWindow->Connect(wxEVT_LEFT_DOWN, wxMouseEventHandler(Openfile::OnMouseDown), NULL, this);
 	hexaWindow->Connect(wxEVT_LEFT_DOWN, wxMouseEventHandler(Openfile::OnMouseDownHexa), NULL, this);
+	execute->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(Openfile::ChangeColors), NULL, this);
 }
 
 
@@ -64,6 +69,8 @@ void Openfile::OnOpen(wxCommandEvent& event)
 		{
 			imageCpy = imageOrg.Copy();
 			m_scrolledWindow->SetVirtualSize(imageOrg.GetSize());
+			wxClientDC(m_scrolledWindow).Clear();
+			
 			Repaint();
 		}
 	}
@@ -80,14 +87,16 @@ void Openfile::Repaint()
 	wxClientDC dc(m_scrolledWindow);   // Pobieramy kontekst okna
 	wxClientDC dc2(hexaWindow);
 	m_scrolledWindow->DoPrepareDC(dc); // Musimy wywolac w przypadku wxScrolledWindow, zeby suwaki prawidlowo dzialaly
-	dc.Clear();
-	dc2.Clear();
+	//dc.Clear();
+	//dc2.Clear();
 	dc.DrawBitmap(bitmap, 0, 0, false); // Rysujemy bitmape na kontekscie urzadzenia
 	dc2.DrawBitmap(hexabit, hexaOffsetx, hexaOffsety, false);
 	dc2.DrawBitmap(hexabit2, 0, 305, false);
 	//dc2.SetBrush(*wxBLACK_BRUSH); // green filling
 	dc2.SetPen(wxPen(wxColor(0, 0, 0), 3)); // 5-pixels-thick red outline
 	if (circPoint) dc2.DrawCircle(*circPoint, 5 /* radius */);
+	dc2.SetPen(wxPen(wxColor(255, 0, 0), 3)); // 5-pixels-thick red outline
+	if (circOnHexPoint) dc2.DrawCircle(*circOnHexPoint, 5 /* radius */);
 }
 
 class Line
@@ -249,7 +258,6 @@ void Openfile::MarkHexaColor(const wxColor& color)
 	B += diff;
 	wxPoint colorPosOnHex;
 
-
 	//colorPosOnHex.x = hexa1.GetWidth() / 2;
 	//colorPosOnHex.y = hexa1.GetHeight() / 2;
 	if (R > 243 && G > 243 && B > 243)
@@ -282,6 +290,7 @@ void Openfile::MarkHexaColor(const wxColor& color)
 	debugTextField->SetLabelText("R: " + std::to_string(R) + " G: " + std::to_string(G) + " B: " + std::to_string(B));
 	if (circPoint) delete circPoint;
 	circPoint = new wxPoint(colorPosOnHex.x, colorPosOnHex.y);
+	onPic = color;
 }
 
 bool Openfile::isOnHexa(const wxPoint& p)
@@ -326,7 +335,7 @@ void Openfile::OnMouseDown(wxMouseEvent &event)
 	mouseX = pt.x;
 	mouseY = pt.y;
 	
-	wxColor pointColor(wxColor(imageCpy.GetRed(mouseX, mouseY), imageCpy.GetGreen(mouseX, mouseY), imageCpy.GetBlue(mouseX, mouseY)));
+	wxColor pointColor(wxColor(imageOrg.GetRed(mouseX, mouseY), imageOrg.GetGreen(mouseX, mouseY), imageOrg.GetBlue(mouseX, mouseY)));
 	//debugTextField->SetLabelText("R: "+std::to_string(pointColor.Red()) + " G: " +std::to_string(pointColor.Green()) +" B: "+ std::to_string(pointColor.Blue()));
 	MarkHexaColor(pointColor);
 }
@@ -340,6 +349,44 @@ void Openfile::OnMouseDownHexa(wxMouseEvent &event)
 	{
 		if (circOnHexPoint) delete circOnHexPoint;
 		circOnHexPoint = new wxPoint(pt);
+		onHexa = wxColor(hexa1.GetRed(pt.x, pt.y), hexa1.GetGreen(pt.x, pt.y), hexa1.GetBlue(pt.x, pt.y));
 	}
 }
 
+void Openfile::ChangeColors(wxCommandEvent& event)
+{
+	if (circOnHexPoint && circPoint)
+	{
+		int nx = imageCpy.GetWidth();
+		int ny = imageCpy.GetHeight();
+		auto * imageData = imageCpy.GetData();
+		const auto * orgData = imageOrg.GetData();
+		auto Red = onPic.Red();
+		auto Green = onPic.Green();
+		auto Blue = onPic.Blue();
+		for (int i = 0; i < nx; i++)
+		{
+			for (int j = 0; j < ny; j++)
+			{
+				auto R = orgData[0 + 3 * i + j * nx * 3];
+				if (Red-R)
+				imageData[0 + 3 * i + j * nx * 3] = oldk*R + (1-oldk)* k / std::abs(Red - R);
+
+				auto G = orgData[1 + 3 * i + j * nx * 3];
+				if (Green - G)
+				imageData[1 + 3 * i + j * nx * 3] = oldk * G + (1 - oldk)* k / std::abs(Green - G);
+
+				auto B = orgData[2 + 3 * i + j * nx * 3];
+				if (Blue - B)
+				imageData[2 + 3 * i + j * nx * 3] = oldk * B + (1 - oldk)* k / std::abs(Blue - B);
+
+				if (R == onPic.Red() && G == onPic.Green() && B == onPic.Blue())
+				{
+					imageData[0 + 3 * i + j * nx * 3] = onHexa.Red();
+					imageData[1 + 3 * i + j * nx * 3] = onHexa.Green();
+					imageData[2 + 3 * i + j * nx * 3] = onHexa.Blue();
+				}
+			}
+		}
+	}
+}

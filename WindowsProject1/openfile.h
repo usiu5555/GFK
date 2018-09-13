@@ -19,6 +19,12 @@ private:
 	wxStaticText* debugTextField;
 	wxPoint* circPoint = NULL;
 	wxPoint* circOnHexPoint = NULL;
+	wxButton* execute;
+	double k = 125;
+	double oldk = 0.2;
+
+	wxColor onPic;
+	wxColor onHexa;
 	int mouseX = 0;
 	int mouseY = 0;
 
@@ -42,4 +48,5 @@ private:
 
 	void MarkHexaColor(const wxColor& color);
 
+	void ChangeColors(wxCommandEvent& event);
 };
