@@ -13,8 +13,20 @@ private:
 	wxScrolledWindow* m_scrolledWindow;
 	wxImage imageOrg;
 	wxImage imageCpy;
-	wxImage* hexa1;
+	wxImage hexa1;
+	wxImage hexaCpy;
 	wxWindow* hexaWindow;
+	wxStaticText* debugTextField;
+	wxPoint* circPoint = NULL;
+	wxPoint* circOnHexPoint = NULL;
+	int mouseX = 0;
+	int mouseY = 0;
+
+	void OnMouseDown(wxMouseEvent &event);
+
+	void OnMouseDownHexa(wxMouseEvent &event);
+
+	bool isOnHexa(const wxPoint& p);
 
 	void m_scrolledWindow_update(wxUpdateUIEvent& event)
 	{
@@ -27,5 +39,7 @@ private:
 	void Repaint();
 
 	void InitHexa();
+
+	void MarkHexaColor(const wxColor& color);
 
 };
