@@ -70,7 +70,6 @@ void Openfile::OnOpen(wxCommandEvent& event)
 			imageCpy = imageOrg.Copy();
 			m_scrolledWindow->SetVirtualSize(imageOrg.GetSize());
 			wxClientDC(m_scrolledWindow).Clear();
-			
 			Repaint();
 		}
 	}
@@ -286,7 +285,6 @@ void Openfile::MarkHexaColor(const wxColor& color)
 			}
 		}
 	}
-	debugTextField->SetLabelText(std::to_string(colorPosOnHex.x) + " " + std::to_string(colorPosOnHex.y));
 	debugTextField->SetLabelText("R: " + std::to_string(R) + " G: " + std::to_string(G) + " B: " + std::to_string(B));
 	if (circPoint) delete circPoint;
 	circPoint = new wxPoint(colorPosOnHex.x, colorPosOnHex.y);
@@ -385,6 +383,82 @@ void Openfile::ChangeColors(wxCommandEvent& event)
 					imageData[0 + 3 * i + j * nx * 3] = onHexa.Red();
 					imageData[1 + 3 * i + j * nx * 3] = onHexa.Green();
 					imageData[2 + 3 * i + j * nx * 3] = onHexa.Blue();
+				}
+			}
+		}
+
+		imageCpy.RotateHue(rotHue);
+
+		wxImage::HSVValue tempHSV;
+		wxImage::RGBValue tempRGB;
+		for (int i = 0; i < nx; i++)
+		{
+			for (int j = 0; j < ny; j++)
+			{
+				tempRGB.red = imageData[0 + 3 * i + j * nx * 3];
+				tempRGB.green = imageData[1 + 3 * i + j * nx * 3];
+				tempRGB.blue = imageData[2 + 3 * i + j * nx * 3];
+				tempHSV = wxImage::RGBtoHSV(tempRGB);
+				tempHSV.saturation += incSaturation;
+				tempHSV.saturation = std::min(tempHSV.saturation, 1.);
+				tempHSV.saturation = std::max(tempHSV.saturation, 0.);
+				tempRGB = wxImage::HSVtoRGB(tempHSV);
+				imageData[0 + 3 * i + j * nx * 3] = tempRGB.red;
+				imageData[1 + 3 * i + j * nx * 3] = tempRGB.green;
+				imageData[2 + 3 * i + j * nx * 3] = tempRGB.blue;
+			}
+		}
+		
+		nx = hexa1.GetWidth();
+		ny = hexa1.GetHeight();
+		orgData = hexa1.GetData();
+		imageData = hexaCpy.GetData();
+		for (int i = 0; i < nx; i++)
+		{
+			for (int j = 0; j < ny; j++)
+			{
+				if (isOnHexa(wxPoint(i, j)))
+				{
+					auto R = orgData[0 + 3 * i + j * nx * 3];
+					if (Red - R)
+						imageData[0 + 3 * i + j * nx * 3] = oldk * R + (1 - oldk)* k / std::abs(Red - R);
+
+					auto G = orgData[1 + 3 * i + j * nx * 3];
+					if (Green - G)
+						imageData[1 + 3 * i + j * nx * 3] = oldk * G + (1 - oldk)* k / std::abs(Green - G);
+
+					auto B = orgData[2 + 3 * i + j * nx * 3];
+					if (Blue - B)
+						imageData[2 + 3 * i + j * nx * 3] = oldk * B + (1 - oldk)* k / std::abs(Blue - B);
+
+					if (R == onPic.Red() && G == onPic.Green() && B == onPic.Blue())
+					{
+						imageData[0 + 3 * i + j * nx * 3] = onHexa.Red();
+						imageData[1 + 3 * i + j * nx * 3] = onHexa.Green();
+						imageData[2 + 3 * i + j * nx * 3] = onHexa.Blue();
+					}
+				}
+			}
+		}
+		hexaCpy.RotateHue(rotHue);
+
+		for (int i = 0; i < nx; i++)
+		{
+			for (int j = 0; j < ny; j++)
+			{
+				if (isOnHexa(wxPoint(i, j)))
+				{
+					tempRGB.red = imageData[0 + 3 * i + j * nx * 3];
+					tempRGB.green = imageData[1 + 3 * i + j * nx * 3];
+					tempRGB.blue = imageData[2 + 3 * i + j * nx * 3];
+					tempHSV = wxImage::RGBtoHSV(tempRGB);
+					tempHSV.saturation += incSaturation;
+					tempHSV.saturation = std::min(tempHSV.saturation, 1.);
+					tempHSV.saturation = std::max(tempHSV.saturation, 0.);
+					tempRGB = wxImage::HSVtoRGB(tempHSV);
+					imageData[0 + 3 * i + j * nx * 3] = tempRGB.red;
+					imageData[1 + 3 * i + j * nx * 3] = tempRGB.green;
+					imageData[2 + 3 * i + j * nx * 3] = tempRGB.blue;
 				}
 			}
 		}
