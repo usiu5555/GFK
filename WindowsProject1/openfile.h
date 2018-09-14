@@ -20,6 +20,8 @@ private:
 	wxPoint* circPoint = NULL;
 	wxPoint* circOnHexPoint = NULL;
 	wxButton* execute;
+	double rotHue = 0.2;
+	double incSaturation = -0.5;
 	double k = 125;
 	double oldk = 0.2;
 
