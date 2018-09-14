@@ -6,7 +6,6 @@
 ColorCorrGUIFrame::ColorCorrGUIFrame(const wxString & title)
 	: wxFrame(NULL, wxID_ANY, title, wxDefaultPosition, wxSize(1024, 720))
 {
-
 	wxMenuBar *menubar = new wxMenuBar;
 	wxMenu *file = new wxMenu;
 	file->Append(wxID_OPEN, wxT("&Open"));
@@ -16,32 +15,34 @@ ColorCorrGUIFrame::ColorCorrGUIFrame(const wxString & title)
 	Connect(wxID_OPEN, wxEVT_COMMAND_MENU_SELECTED,
 		wxCommandEventHandler(ColorCorrGUIFrame::OnOpen));
 
-	wxImage::AddHandler(new wxJPEGHandler);           
-	wxImage::AddHandler(new wxPNGHandler);            
+	wxImage::AddHandler(new wxJPEGHandler);
+	wxImage::AddHandler(new wxPNGHandler);
 	wxImage::AddHandler(new wxBMPHandler);
 
 	wxBoxSizer* bSizer1;
 	bSizer1 = new wxBoxSizer(wxHORIZONTAL);
 
-	imageScrolledWindow = new wxScrolledWindow(this, wxID_ANY, wxDefaultPosition, wxSize(300,300), wxHSCROLL | wxVSCROLL);
+	imageScrolledWindow = new wxScrolledWindow(this, wxID_ANY, wxDefaultPosition, wxSize(300, 300), wxHSCROLL | wxVSCROLL);
 	imageScrolledWindow->SetScrollRate(5, 5);
 	bSizer1->Add(imageScrolledWindow, 1, wxEXPAND | wxALL, 5);
+	imageScrolledWindow->SetBackgroundColour(backgroundColor);
 
-	GUIWindow = new wxWindow(this, wxID_ANY, wxDefaultPosition, wxSize(300,700));
+	GUIWindow = new wxWindow(this, wxID_ANY, wxDefaultPosition, wxSize(300, 700));
+	GUIWindow->SetBackgroundColour(backgroundColor);
 
 	wxBoxSizer* bSizer2;
 	bSizer2 = new wxBoxSizer(wxVERTICAL);
-	bSizer2->SetMinSize(wxSize(300,300));
+	bSizer2->SetMinSize(wxSize(300, 300));
 
-	chosenColorTextField = new wxStaticText(this, wxID_ANY, _("Chosen color scaled brightness"), wxDefaultPosition, wxDefaultSize, 0);
+	chosenColorTextField = new wxStaticText(this, wxID_ANY, _("Choose image (File->Open)."), wxDefaultPosition, wxDefaultSize, 0);
 	chosenColorTextField->Wrap(-1);
 	bSizer2->Add(chosenColorTextField, 0, wxALL, 5);
 
 	execute = new wxButton(this, wxID_ANY, _("Execute"), wxDefaultPosition, wxDefaultSize, 0);
 	bSizer2->Add(execute, 0, wxALL | wxEXPAND, 5);
 
-	bSizer2->Add(GUIWindow, 0, wxALL , 5);
-	sliderProportional = new wxSlider(this, wxID_ANY | wxSL_LABELS| wxSL_AUTOTICKS, 1, 1, 254);
+	bSizer2->Add(GUIWindow, 0, wxALL, 5);
+	sliderProportional = new wxSlider(this, wxID_ANY | wxSL_LABELS | wxSL_AUTOTICKS, 1, 1, 255);
 	sliderOrgImgFrac = new wxSlider(this, wxID_ANY | wxSL_LABELS, 0, 0, 100);
 	sliderHue = new wxSlider(this, wxID_ANY | wxSL_LABELS, 0, -100, 100);
 	sliderSaturation = new wxSlider(this, wxID_ANY | wxSL_LABELS, 0, -100, 100);
@@ -50,15 +51,20 @@ ColorCorrGUIFrame::ColorCorrGUIFrame(const wxString & title)
 	bSizer3 = new wxBoxSizer(wxVERTICAL);
 	bSizer3->SetMinSize(wxSize(100, 100));
 
+	bSizer3->Add(new wxStaticText(this, wxID_ANY, _("Proportionality coefficient [1,255]"), wxDefaultPosition, wxDefaultSize, 0), 0, wxALL, 5);
 	bSizer3->Add(sliderProportional, 0, wxALL, 5);
+	bSizer3->Add(new wxStaticText(this, wxID_ANY, _("Orginal image fraction [0,1]"), wxDefaultPosition, wxDefaultSize, 0), 0, wxALL, 5);
 	bSizer3->Add(sliderOrgImgFrac, 0, wxALL, 5);
+	bSizer3->Add(new wxStaticText(this, wxID_ANY, _("Hue rotation [-1,1]"), wxDefaultPosition, wxDefaultSize, 0), 0, wxALL, 5);
 	bSizer3->Add(sliderHue, 0, wxALL, 5);
+	bSizer3->Add(new wxStaticText(this, wxID_ANY, _("Saturation increment [-1,1]"), wxDefaultPosition, wxDefaultSize, 0), 0, wxALL, 5);
 	bSizer3->Add(sliderSaturation, 0, wxALL, 5);
 	bSizer1->Add(bSizer2, 0, wxALL, 5);
 	bSizer1->Add(bSizer3, 0, wxALL, 5);
 	this->SetSizer(bSizer1);
 	this->Layout();
 	this->Centre(wxBOTH);
+	this->SetBackgroundColour(backgroundColor);
 	Center();
 	InitHexa();
 
@@ -81,7 +87,7 @@ void ColorCorrGUIFrame::proportionalHandler(wxScrollEvent& event) {
 }
 
 void ColorCorrGUIFrame::oldImgSliderHandler(wxScrollEvent& event) {
-	orgFrac = sliderOrgImgFrac->GetValue()/100.;
+	orgFrac = sliderOrgImgFrac->GetValue() / 100.;
 	wxCommandEvent evt;
 	ChangeColors(evt);
 	Repaint();
@@ -115,6 +121,7 @@ void ColorCorrGUIFrame::OnOpen(wxCommandEvent& event)
 			wxClientDC(imageScrolledWindow).Clear();
 			Repaint();
 		}
+		chosenColorTextField->SetLabel("Choose points on image and upper hexagon, then execute.");
 	}
 }
 
@@ -125,10 +132,10 @@ void ColorCorrGUIFrame::Repaint()
 {
 	if (imageCpy.IsOk())
 	{
-		wxBitmap bitmap(imageCpy);            
-		wxClientDC dc(imageScrolledWindow);   
-		imageScrolledWindow->DoPrepareDC(dc); 
-		dc.DrawBitmap(bitmap, 0, 0, false);   
+		wxBitmap bitmap(imageCpy);
+		wxClientDC dc(imageScrolledWindow);
+		imageScrolledWindow->DoPrepareDC(dc);
+		dc.DrawBitmap(bitmap, 0, 0, false);
 	}
 	if (colorHexagonImage.IsOk() && colorHexagonImageCpy.IsOk())
 	{
@@ -216,7 +223,7 @@ private:
 
 };
 
-void ColorCorrGUIFrame::WhiteOutsideOfHexa(wxImage& hex)
+void ColorCorrGUIFrame::BackgroundOutsideOfHexa(wxImage& hex, const wxColor& bgColor)
 {
 	int nx = hex.GetWidth();
 	int ny = hex.GetHeight();
@@ -232,6 +239,10 @@ void ColorCorrGUIFrame::WhiteOutsideOfHexa(wxImage& hex)
 	Line topLeft(0, y2, x0, y3);
 	Line topRight(x0, y3, nx - 1, y2);
 
+	auto R = bgColor.Red();
+	auto G = bgColor.Green();
+	auto B = bgColor.Blue();
+
 	unsigned char * imageData = hex.GetData();
 	for (int i = 0; i < nx; i++)
 	{
@@ -239,9 +250,9 @@ void ColorCorrGUIFrame::WhiteOutsideOfHexa(wxImage& hex)
 		{
 			if (botRight.isUnder(i, j) || botLeft.isUnder(i, j) || topRight.isOver(i, j) || topLeft.isOver(i, j))
 			{
-				imageData[0 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
-				imageData[1 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
-				imageData[2 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
+				imageData[0 + 3 * i + (ny - 1 - j) * nx * 3] = R;
+				imageData[1 + 3 * i + (ny - 1 - j) * nx * 3] = G;
+				imageData[2 + 3 * i + (ny - 1 - j) * nx * 3] = B;
 			}
 		}
 	}
@@ -305,7 +316,7 @@ void ColorCorrGUIFrame::InitHexa()
 			}
 		}
 	}
-	WhiteOutsideOfHexa(colorHexagonImage);
+	BackgroundOutsideOfHexa(colorHexagonImage, backgroundColor);
 	colorHexagonImageCpy = colorHexagonImage.Copy();
 }
 
@@ -346,7 +357,6 @@ void ColorCorrGUIFrame::MarkHexaColor(const wxColor& color)
 			}
 		}
 	}
-	chosenColorTextField->SetLabelText("R: " + std::to_string(R) + " G: " + std::to_string(G) + " B: " + std::to_string(B));
 	if (chosenColorPointOnHex) delete chosenColorPointOnHex;
 	chosenColorPointOnHex = new wxPoint(colorPosOnHex.x, colorPosOnHex.y);
 	onImg = color;
@@ -493,7 +503,7 @@ void ColorCorrGUIFrame::proportionalScaling(wxImage & cpy, const wxImage & org)
 void ColorCorrGUIFrame::ChangeColors(wxCommandEvent& event)
 {
 	if (pointOnHex && chosenColorPointOnHex)
-	{	
+	{
 		imageCpy = imageOrg.Copy();
 		proportionalScaling(imageCpy, imageOrg);
 		imageCpy.RotateHue(rotHue);
@@ -504,6 +514,6 @@ void ColorCorrGUIFrame::ChangeColors(wxCommandEvent& event)
 		colorHexagonImageCpy.RotateHue(rotHue);
 		adjustSaturation(colorHexagonImageCpy);
 		combineWithOrginal(colorHexagonImageCpy, colorHexagonImage);
-		WhiteOutsideOfHexa(colorHexagonImageCpy);
+		BackgroundOutsideOfHexa(colorHexagonImageCpy, backgroundColor);
 	}
 }

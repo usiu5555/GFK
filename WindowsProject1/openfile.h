@@ -8,9 +8,11 @@ class ColorCorrGUIFrame : public wxFrame
 public:
 	ColorCorrGUIFrame(const wxString& title);
 
-	void OnOpen(wxCommandEvent& event);
-
 private:
+	wxColor backgroundColor = wxColor{ 155, 155, 205 };
+
+	//method used to import image
+	void OnOpen(wxCommandEvent& event);
 	//scrolled window for image import
 	wxScrolledWindow* imageScrolledWindow;
 	
@@ -95,7 +97,8 @@ private:
 	//method for refreshing canvas
 	void Repaint();
 
-	void WhiteOutsideOfHexa(wxImage & hex);
+	//fill backround of hexagon wih color
+	void BackgroundOutsideOfHexa(wxImage& hex, const wxColor& bgColor);
 
 	//draw color hexagon and store in olorHexagonImage and olorHexagonImageCpy
 	void InitHexa();
