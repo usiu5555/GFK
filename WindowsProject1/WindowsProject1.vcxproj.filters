@@ -27,7 +27,7 @@
     <ClInclude Include="WindowsProject1.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="openfile.h">
+    <ClInclude Include="ColorCorr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -38,7 +38,7 @@
     <ClCompile Include="WindowsProject1.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="openfile.cpp">
+    <ClCompile Include="ColorCorr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
