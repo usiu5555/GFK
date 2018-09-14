@@ -216,6 +216,37 @@ private:
 
 };
 
+void ColorCorrGUIFrame::WhiteOutsideOfHexa(wxImage& hex)
+{
+	int nx = hex.GetWidth();
+	int ny = hex.GetHeight();
+	int x0 = nx / 2;
+	int y0 = ny / 2;
+
+	double a = 125;
+	int y1 = (nx / 2)*std::tan(M_PI / 6.);
+	int y2 = y1 + a;
+	int y3 = ny - 1;
+	Line botRight(x0, 0, nx - 1, y1);
+	Line botLeft(0, y1, x0, 0);
+	Line topLeft(0, y2, x0, y3);
+	Line topRight(x0, y3, nx - 1, y2);
+
+	unsigned char * imageData = hex.GetData();
+	for (int i = 0; i < nx; i++)
+	{
+		for (int j = 0; j < ny; j++)
+		{
+			if (botRight.isUnder(i, j) || botLeft.isUnder(i, j) || topRight.isOver(i, j) || topLeft.isOver(i, j))
+			{
+				imageData[0 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
+				imageData[1 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
+				imageData[2 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
+			}
+		}
+	}
+}
+
 void ColorCorrGUIFrame::InitHexa()
 {
 	double a = 125;
@@ -274,21 +305,7 @@ void ColorCorrGUIFrame::InitHexa()
 			}
 		}
 	}
-
-	//white outside of hexa
-	for (int i = 0; i < nx; i++)
-	{
-		for (int j = 0; j < ny; j++)
-		{
-			if (botRight.isUnder(i, j) || botLeft.isUnder(i, j) || topRight.isOver(i, j) || topLeft.isOver(i, j))
-			{
-				imageData[0 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
-				imageData[1 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
-				imageData[2 + 3 * i + (ny - 1 - j) * nx * 3] = 255;
-			}
-		}
-	}
-
+	WhiteOutsideOfHexa(colorHexagonImage);
 	colorHexagonImageCpy = colorHexagonImage.Copy();
 }
 
@@ -440,10 +457,10 @@ void ColorCorrGUIFrame::adjustSaturation(wxImage & cpy)
 
 void ColorCorrGUIFrame::proportionalScaling(wxImage & cpy, const wxImage & org)
 {
-	int nx = imageCpy.GetWidth();
-	int ny = imageCpy.GetHeight();
-	auto * imageData = imageCpy.GetData();
-	const auto * orgData = imageOrg.GetData();
+	int nx = cpy.GetWidth();
+	int ny = cpy.GetHeight();
+	auto * imageData = cpy.GetData();
+	const auto * orgData = org.GetData();
 	auto Red = onImg.Red();
 	auto Green = onImg.Green();
 	auto Blue = onImg.Blue();
@@ -479,13 +496,14 @@ void ColorCorrGUIFrame::ChangeColors(wxCommandEvent& event)
 	{	
 		imageCpy = imageOrg.Copy();
 		proportionalScaling(imageCpy, imageOrg);
-		//imageCpy.RotateHue(rotHue);
-		//adjustSaturation(imageCpy);
-		//combineWithOrginal(imageCpy, imageOrg);
+		imageCpy.RotateHue(rotHue);
+		adjustSaturation(imageCpy);
+		combineWithOrginal(imageCpy, imageOrg);
 		colorHexagonImageCpy = colorHexagonImage.Copy();
 		proportionalScaling(colorHexagonImageCpy, colorHexagonImage);
-		//colorHexagonImageCpy.RotateHue(rotHue);
-		//adjustSaturation(colorHexagonImageCpy);
-		//combineWithOrginal(colorHexagonImageCpy, colorHexagonImage);
+		colorHexagonImageCpy.RotateHue(rotHue);
+		adjustSaturation(colorHexagonImageCpy);
+		combineWithOrginal(colorHexagonImageCpy, colorHexagonImage);
+		WhiteOutsideOfHexa(colorHexagonImageCpy);
 	}
 }

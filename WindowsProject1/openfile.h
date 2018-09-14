@@ -95,6 +95,8 @@ private:
 	//method for refreshing canvas
 	void Repaint();
 
+	void WhiteOutsideOfHexa(wxImage & hex);
+
 	//draw color hexagon and store in olorHexagonImage and olorHexagonImageCpy
 	void InitHexa();
 
