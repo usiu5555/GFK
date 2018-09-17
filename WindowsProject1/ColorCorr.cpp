@@ -42,21 +42,21 @@ ColorCorrGUIFrame::ColorCorrGUIFrame(const wxString & title)
 	bSizer2->Add(execute, 0, wxALL | wxEXPAND, 5);
 
 	bSizer2->Add(GUIWindow, 0, wxALL, 5);
-	sliderProportional = new wxSlider(this, wxID_ANY | wxSL_LABELS | wxSL_AUTOTICKS, 1, 1, 255);
+	sliderProportional = new wxSlider(this, wxID_ANY | wxSL_LABELS | wxSL_AUTOTICKS, 1, 1, 100);
 	sliderOrgImgFrac = new wxSlider(this, wxID_ANY | wxSL_LABELS, 0, 0, 100);
-	sliderHue = new wxSlider(this, wxID_ANY | wxSL_LABELS, 0, -100, 100);
+	sliderSaturation = new wxSlider(this, wxID_ANY | wxSL_LABELS, 0, -100, 100);
 	sliderBrightness = new wxSlider(this, wxID_ANY | wxSL_LABELS, 0, 0, 255);
 
 	wxBoxSizer* bSizer3;
 	bSizer3 = new wxBoxSizer(wxVERTICAL);
 	bSizer3->SetMinSize(wxSize(100, 100));
 
-	bSizer3->Add(new wxStaticText(this, wxID_ANY, _("Proportionality coefficient [1,255]"), wxDefaultPosition, wxDefaultSize, 0), 0, wxALL, 5);
+	bSizer3->Add(new wxStaticText(this, wxID_ANY, _("Proportionality coefficient [1,2]"), wxDefaultPosition, wxDefaultSize, 0), 0, wxALL, 5);
 	bSizer3->Add(sliderProportional, 0, wxALL, 5);
 	bSizer3->Add(new wxStaticText(this, wxID_ANY, _("Orginal image fraction [0,1]"), wxDefaultPosition, wxDefaultSize, 0), 0, wxALL, 5);
 	bSizer3->Add(sliderOrgImgFrac, 0, wxALL, 5);
-	bSizer3->Add(new wxStaticText(this, wxID_ANY, _("Hue rotation [-1,1]"), wxDefaultPosition, wxDefaultSize, 0), 0, wxALL, 5);
-	bSizer3->Add(sliderHue, 0, wxALL, 5);
+	bSizer3->Add(new wxStaticText(this, wxID_ANY, _("Saturation increment [-1,1]"), wxDefaultPosition, wxDefaultSize, 0), 0, wxALL, 5);
+	bSizer3->Add(sliderSaturation, 0, wxALL, 5);
 	bSizer3->Add(new wxStaticText(this, wxID_ANY, _("Brightness increment [0,255]"), wxDefaultPosition, wxDefaultSize, 0), 0, wxALL, 5);
 	bSizer3->Add(sliderBrightness, 0, wxALL, 5);
 	bSizer1->Add(bSizer2, 0, wxALL, 5);
@@ -75,12 +75,12 @@ ColorCorrGUIFrame::ColorCorrGUIFrame(const wxString & title)
 	execute->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(ColorCorrGUIFrame::ChangeColors), NULL, this);
 	sliderProportional->Connect(wxEVT_SLIDER, wxScrollEventHandler(ColorCorrGUIFrame::proportionalHandler), NULL, this);
 	sliderOrgImgFrac->Connect(wxEVT_SLIDER, wxScrollEventHandler(ColorCorrGUIFrame::oldImgSliderHandler), NULL, this);
-	sliderHue->Connect(wxEVT_SLIDER, wxScrollEventHandler(ColorCorrGUIFrame::hueSliderHandler), NULL, this);
+	sliderSaturation->Connect(wxEVT_SLIDER, wxScrollEventHandler(ColorCorrGUIFrame::saturationSliderHandler), NULL, this);
 	sliderBrightness->Connect(wxEVT_SLIDER, wxScrollEventHandler(ColorCorrGUIFrame::brightnessSliderHandler), NULL, this);
 }
 
 void ColorCorrGUIFrame::proportionalHandler(wxScrollEvent& event) {
-	k = sliderProportional->GetValue();
+	k = sliderProportional->GetValue()/100.*45 + 5;
 	wxCommandEvent evt;
 	ChangeColors(evt);
 	Repaint();
@@ -93,8 +93,8 @@ void ColorCorrGUIFrame::oldImgSliderHandler(wxScrollEvent& event) {
 	Repaint();
 }
 
-void ColorCorrGUIFrame::hueSliderHandler(wxScrollEvent& event) {
-	rotHue = sliderHue->GetValue() / 100.;
+void ColorCorrGUIFrame::saturationSliderHandler(wxScrollEvent& event) {
+	incSaturation = sliderSaturation->GetValue() / 100.;
 	wxCommandEvent evt;
 	ChangeColors(evt);
 	Repaint();
@@ -330,6 +330,8 @@ void ColorCorrGUIFrame::MarkHexaColor(const wxColor& color)
 	R += diff;
 	G += diff;
 	B += diff;
+	onImg = wxColor(R, G, B);
+
 	wxPoint colorPosOnHex;
 
 	if (R > 243 && G > 243 && B > 243)
@@ -402,8 +404,8 @@ void ColorCorrGUIFrame::OnMouseDown(wxMouseEvent &event)
 	pt = event.GetLogicalPosition(dc);
 	pt = imageScrolledWindow->CalcUnscrolledPosition(pt);
 
-	wxColor pointColor(wxColor(imageOrg.GetRed(pt.x, pt.y), imageOrg.GetGreen(pt.x, pt.y), imageOrg.GetBlue(pt.x, pt.y)));
-	MarkHexaColor(pointColor);
+	onImgOrg = wxColor(wxColor(imageOrg.GetRed(pt.x, pt.y), imageOrg.GetGreen(pt.x, pt.y), imageOrg.GetBlue(pt.x, pt.y)));
+	MarkHexaColor(onImgOrg);
 }
 
 void ColorCorrGUIFrame::OnMouseDownHexa(wxMouseEvent &event)
@@ -467,37 +469,85 @@ void ColorCorrGUIFrame::adjustBrightness(wxImage & cpy)
 	}
 }
 
-void ColorCorrGUIFrame::proportionalScaling(wxImage & cpy, const wxImage & org)
+void ColorCorrGUIFrame::adjustSaturation(wxImage & cpy)
+{
+	wxImage::HSVValue tempHSV;
+	wxImage::RGBValue tempRGB;
+	auto nx = cpy.GetWidth();
+	auto ny = cpy.GetHeight();
+	unsigned char* imageData = cpy.GetData();
+	for (int i = 0; i < nx; i++)
+	{
+		for (int j = 0; j < ny; j++)
+		{
+			tempRGB.red = imageData[0 + 3 * i + j * nx * 3];
+			tempRGB.green = imageData[1 + 3 * i + j * nx * 3];
+			tempRGB.blue = imageData[2 + 3 * i + j * nx * 3];
+			tempHSV = wxImage::RGBtoHSV(tempRGB);
+			tempHSV.saturation += incSaturation;
+			tempHSV.saturation = std::min(tempHSV.saturation, 1.);
+			tempHSV.saturation = std::max(tempHSV.saturation, 0.);
+			tempRGB = wxImage::HSVtoRGB(tempHSV);
+			imageData[0 + 3 * i + j * nx * 3] = tempRGB.red;
+			imageData[1 + 3 * i + j * nx * 3] = tempRGB.green;
+			imageData[2 + 3 * i + j * nx * 3] = tempRGB.blue;
+		}
+	}
+}
+
+void ColorCorrGUIFrame::proportionalScaling(wxImage & cpy, const wxImage & org, const wxColor & orginal)
 {
 	int nx = cpy.GetWidth();
 	int ny = cpy.GetHeight();
 	auto * imageData = cpy.GetData();
 	const auto * orgData = org.GetData();
-	auto Red = onImg.Red();
-	auto Green = onImg.Green();
-	auto Blue = onImg.Blue();
+	auto OrgR = orginal.Red();
+	auto OrgG = orginal.Green();
+	auto OrgB = orginal.Blue();
+
+	auto RefR = onHexa.Red();
+	auto RefG = onHexa.Green();
+	auto RefB = onHexa.Blue();
+
+	auto transferFun = [&](double ref, double org, double chosen, double dist)
+	{
+		//auto dist = std::pow(std::abs(chosen - org), 1);
+		auto fun1 = [](double x)
+		{
+			return 1. / x;
+		};
+		auto fun2 = [&](double x)
+		{
+			return 1. / (std::exp(2.5 * (x - k) / k) + 1);
+		};
+
+		if (dist > 0)
+		return static_cast<unsigned short>(chosen*(1. - fun2(dist)) + fun2(dist)*ref);
+		else 
+		return static_cast<unsigned short>(ref);
+	};
+
 	for (int i = 0; i < nx; i++)
 	{
 		for (int j = 0; j < ny; j++)
 		{
 			auto R = orgData[0 + 3 * i + j * nx * 3];
-			if (Red - R)
-				imageData[0 + 3 * i + j * nx * 3] = k / std::abs(Red - R);
-
 			auto G = orgData[1 + 3 * i + j * nx * 3];
-			if (Green - G)
-				imageData[1 + 3 * i + j * nx * 3] = k / std::abs(Green - G);
-
 			auto B = orgData[2 + 3 * i + j * nx * 3];
-			if (Blue - B)
-				imageData[2 + 3 * i + j * nx * 3] = k / std::abs(Blue - B);
 
-			if (R == onImg.Red() && G == onImg.Green() && B == onImg.Blue())
-			{
-				imageData[0 + 3 * i + j * nx * 3] = onHexa.Red();
-				imageData[1 + 3 * i + j * nx * 3] = onHexa.Green();
-				imageData[2 + 3 * i + j * nx * 3] = onHexa.Blue();
-			}
+			auto dist = (std::sqrt(std::pow(B - OrgB, 2) + std::pow(G - OrgG, 2) + std::pow(R - OrgR, 2)));
+
+			imageData[2 + 3 * i + j * nx * 3] = transferFun(RefB, OrgB, B, dist);
+			imageData[1 + 3 * i + j * nx * 3] = transferFun(RefG ,OrgG, G, dist);
+			imageData[0 + 3 * i + j * nx * 3] = transferFun(RefR, OrgR, R, dist);
+
+
+			//if (R == onImg.Red() && G == onImg.Green() && B == onImg.Blue())
+			//{
+			//	imageData[0 + 3 * i + j * nx * 3] = onHexa.Red();
+			//	imageData[1 + 3 * i + j * nx * 3] = onHexa.Green();
+			//	imageData[2 + 3 * i + j * nx * 3] = onHexa.Blue();
+			//}
 		}
 	}
 }
@@ -507,13 +557,13 @@ void ColorCorrGUIFrame::ChangeColors(wxCommandEvent& event)
 	if (pointOnHex && chosenColorPointOnHex)
 	{
 		imageCpy = imageOrg.Copy();
-		proportionalScaling(imageCpy, imageOrg);
-		imageCpy.RotateHue(rotHue);
+		proportionalScaling(imageCpy, imageOrg, onImg);
+		adjustSaturation(imageCpy);
 		adjustBrightness(imageCpy);
 		combineWithOrginal(imageCpy, imageOrg);
 		colorHexagonImageCpy = colorHexagonImage.Copy();
-		proportionalScaling(colorHexagonImageCpy, colorHexagonImage);
-		colorHexagonImageCpy.RotateHue(rotHue);
+		proportionalScaling(colorHexagonImageCpy, colorHexagonImage, onImg);
+		adjustSaturation(colorHexagonImageCpy);
 		adjustBrightness(colorHexagonImageCpy);
 		combineWithOrginal(colorHexagonImageCpy, colorHexagonImage);
 		BackgroundOutsideOfHexa(colorHexagonImageCpy, backgroundColor);

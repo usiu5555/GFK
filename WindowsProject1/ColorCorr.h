@@ -50,25 +50,28 @@ private:
 	wxSlider* sliderOrgImgFrac;
 
 	//slider used to change hue rotation
-	wxSlider* sliderHue;
+	wxSlider* sliderSaturation;
 
 	//slider used to modify brightness
 	wxSlider* sliderBrightness;
 
-	//hue rotation [-1,1]
-	double rotHue = 0;
-
 	//saturation increment [-1, 1]
-	double incBrightness = 0;
+	double incSaturation = 0.;
+
+	//brightness increment [0,255]
+	double incBrightness = 0.;
 
 	//proportional coefficient [1:255]
-	double k = 125;
+	double k = 10;
 
 	//orginal image fraction
 	double orgFrac = 0;
 
 	//color chosen on image
 	wxColor onImg;
+
+	//color chosen on image orginal
+	wxColor onImgOrg;
 
 	//color chosen on exagon
 	wxColor onHexa;
@@ -112,15 +115,18 @@ private:
 	//handlers for sliders
 	void proportionalHandler(wxScrollEvent& event);
 	void oldImgSliderHandler(wxScrollEvent & event);
-	void hueSliderHandler(wxScrollEvent & event);
+	void saturationSliderHandler(wxScrollEvent & event);
 	void brightnessSliderHandler(wxScrollEvent & event);
 
 	//combine with original image using orgFrac
 	void combineWithOrginal(wxImage & cpy, const wxImage & org);
 
-	//adjust saturation
+	//adjust Brightness
 	void adjustBrightness(wxImage & cpy);
 
 	//scaling proportionally to inverse
-	void proportionalScaling(wxImage & cpy, const wxImage & org);
+	void proportionalScaling(wxImage & cpy, const wxImage & org, const wxColor & orginal);
+
+	//adjust saturation
+	void adjustSaturation(wxImage & cpy);
 };
